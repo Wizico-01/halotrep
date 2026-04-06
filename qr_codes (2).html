@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Halogen Group — QR Codes</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f0f0f0; color: #111; }
+  .top-bar { background: #0D1B4B; color: #C8A84B; padding: 18px 32px; display: flex; align-items: center; gap: 20px; }
+  .top-bar h1 { font-size: 20px; font-weight: bold; letter-spacing: 1px; }
+  .top-bar p { font-size: 13px; color: #ddd; margin-top: 4px; }
+  .controls { background: #fff; padding: 16px 32px; border-bottom: 1px solid #ddd; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .controls input { padding: 8px 14px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; width: 260px; }
+  .controls select { padding: 8px 14px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+  .controls button { padding: 8px 18px; background: #C8A84B; color: #0D1B4B; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; }
+  .controls button:hover { background: #a88b3a; }
+  .grid { display: flex; flex-wrap: wrap; gap: 20px; padding: 24px 32px; }
+  .card { background: #fff; border-radius: 10px; padding: 20px 16px 16px; width: 260px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; border-top: 4px solid #C8A84B; page-break-inside: avoid; }
+  .card .callsign { background: #0D1B4B; color: #C8A84B; font-size: 11px; font-weight: bold; padding: 2px 10px; border-radius: 20px; margin-bottom: 10px; letter-spacing: 1px; }
+  .card .loc-name { font-size: 13px; font-weight: bold; color: #0D1B4B; text-align: center; margin-bottom: 4px; min-height: 34px; display: flex; align-items: center; justify-content: center; }
+  .card .meta { font-size: 11px; color: #777; margin-bottom: 12px; text-align: center; }
+  .card .qr-box { width: 180px; height: 180px; display: flex; align-items: center; justify-content: center; }
+  .card .qr-box canvas, .card .qr-box img { width: 180px !important; height: 180px !important; }
+  .card .footer { font-size: 10px; color: #aaa; margin-top: 10px; text-align: center; }
+  .count { font-size: 13px; color: #555; margin-left: auto; }
+  @media print {
+    body { background: white; }
+    .controls, .top-bar { display: none; }
+    .grid { padding: 0; gap: 12px; }
+    .card { box-shadow: none; border: 1px solid #ddd; width: 230px; }
+  }
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <div>
+    <h1>&#9670; HALOGEN GROUP</h1>
+    <p>Guard Situation Report — QR Code Directory</p>
+  </div>
+</div>
+<div class="controls">
+  <input type="text" id="search" placeholder="Search location or call sign..." oninput="filterCards()">
+  <select id="regionFilter" onchange="filterCards()">
+    <option value="">All Regions</option>
+    <option value="EAST 1">EAST 1</option>
+    <option value="EAST 2">EAST 2</option>
+  </select>
+  <select id="zoneFilter" onchange="filterCards()">
+    <option value="">All Zones</option>
+    <option value="ZONE A">ZONE A</option>
+    <option value="ZONE B">ZONE B</option>
+    <option value="ZONE C">ZONE C</option>
+  </select>
+  <button onclick="window.print()">&#128438; Print All</button>
+  <span class="count" id="count-label"></span>
+</div>
+<div class="grid" id="grid"></div>
+<script>
+const BASE_URL = "https://wizico-01.github.io/halotrep/form.html";
+const locations = [{"location": "CRUSH ROCK PH", "callsign": "CP", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "CRUSH ROCK EBOYI", "callsign": "CE", "region": "EAST 2", "zone": "ZONE C", "tsl": "CLEMENT"}, {"location": "DREDGING INTERNATIONAL", "callsign": "DI", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "FCMB OYIGBO", "callsign": "FO", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "FCMB TRANSAMADI", "callsign": "FC2", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "POLARIS BANK TRANSAMADI", "callsign": "PT", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "SHOURLINK MD RSD", "callsign": "SM", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "BOURBON GUEST HOUSE", "callsign": "BG", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "ALLISON MADUEKE RESIDENCE YENAGOA", "callsign": "AM2", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "POLARIS BANK AGIP RD", "callsign": "PA", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "MR MAXINE KORUBOR'S RSD", "callsign": "MK", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "MEGA FLAT", "callsign": "MF", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "GE ONNE", "callsign": "GO", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "GREENVILLE LNG", "callsign": "GV", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "INNOTEX TRANSAMADI", "callsign": "IN", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "LILY HOSPITAL", "callsign": "LH", "region": "EAST 2", "zone": "ZONE C", "tsl": "CLEMENT"}, {"location": "PROF MARSON'S RSD", "callsign": "PM2", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "MBH POWER PLANT ENUGU", "callsign": "MP", "region": "EAST 2", "zone": "ZONE C", "tsl": "CLEMENT"}, {"location": "MONTISOL HOTEL", "callsign": "MH", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "MR AJILORE'S RSD", "callsign": "AR", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "MTN OLD OFFICE", "callsign": "MO2", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "MTN REGIONAL OFFICE", "callsign": "MR", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "MTN VGC OLUOBASANJO RD", "callsign": "MV", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "MTN VGC TRANSAMADI", "callsign": "MV2", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "MTN WALK IN CENTER", "callsign": "MW", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "PROTEA HOTEL WARRI", "callsign": "PH", "region": "EAST 2", "zone": "ZONE C", "tsl": "CLEMENT"}, {"location": "PZ TANK FARM", "callsign": "PZ", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "RADIANT", "callsign": "RA", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "RELENTECH SPECIALIST", "callsign": "RS", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "SEFLAM OIL", "callsign": "SO", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "SIEMENS NIG", "callsign": "SS", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "STOCK GAP", "callsign": "SG", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "TERRAWOOD ESTATE", "callsign": "TW", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "TSL LOGISTICS", "callsign": "TL", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "VIJITRONICS WARRI", "callsign": "VT", "region": "EAST 2", "zone": "ZONE C", "tsl": "CLEMENT"}, {"location": "BOURBON INTER OIL", "callsign": "BB", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "FMC TECHNOLOGIES", "callsign": "FT", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "OIL DATA OFFICE", "callsign": "OD", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "BRISTOW HELICOPTERS", "callsign": "BH", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "CFAO MOTORS", "callsign": "CM", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "DEPTHWIZE", "callsign": "DW", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "DHL TRANS-AMADI", "callsign": "DL1", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "EDO STATE HOUSE OF ASSEMBLY", "callsign": "ES2", "region": "EAST 2", "zone": "ZONE C", "tsl": "CLEMENT"}, {"location": "FIRST MARINE", "callsign": "FM", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "JETHMAN INTEGRATED", "callsign": "JI", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "OAS HELICOPTERS", "callsign": "OH", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "SCANTECH OFFSHORE", "callsign": "SD1", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "STANBIC IBTC AWKA", "callsign": "SA", "region": "EAST 2", "zone": "ZONE C", "tsl": "CLEMENT"}, {"location": "OSATO'S RESIDENCE UYO", "callsign": "OR", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "UNION BANK TRANSAMADI", "callsign": "UT", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "UNION BANK IKWERE RD", "callsign": "UI", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "UNION BANK OYIBO", "callsign": "UO", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "UNION BANK STATION RD", "callsign": "US", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "UNION BANK OLD BUILDING", "callsign": "UO3", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "UNION BANK KINGSWAY", "callsign": "UK", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "UNION BANK BORI ONNE", "callsign": "UB", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "UNION BANK UNICAL CALABAR", "callsign": "UC2", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "UNION BANK CALABAR MAIN BRANCH", "callsign": "UC", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "UNION BANK MARAM RD CALABAR", "callsign": "UC3", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "UNION BANK ORIJE", "callsign": "UO2", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "UNION BANK UYO 2nd MAIN BRANCH", "callsign": "UU", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "UNION BANK ABA RD", "callsign": "UA", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "UNION BANK ODELE YENAGUA", "callsign": "UY2", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "UNION BANK YENAGUA", "callsign": "UY", "region": "EAST 1", "zone": "ZONE A", "tsl": "ECHUA"}, {"location": "UNION BANK CROSS RIVER", "callsign": "UR", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "UNION BANK IKOT ABASI AKWAIBOM", "callsign": "UU2", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "UNION BANK IKOT EDIBOM AKWA IBOM", "callsign": "UU3", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "UNION BANK OGOJA", "callsign": "UO4", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "UNION BANK EKET", "callsign": "UE", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "UNION BANK UIT IBENO AKWAIBOM", "callsign": "UI2", "region": "EAST 1", "zone": "ZONE B", "tsl": "IHEANACHOR"}, {"location": "OSHIMILI SOUTH OSS", "callsign": "OO", "region": "EAST 2", "zone": "ZONE C", "tsl": "CLEMENT"}, {"location": "WARRI SOUTH OSS", "callsign": "WO", "region": "EAST 2", "zone": "ZONE C", "tsl": "CLEMENT"}, {"location": "IKA SOUTH OSS", "callsign": "IO", "region": "EAST 2", "zone": "ZONE C", "tsl": "CLEMENT"}, {"location": "UGHELLI NORTH OSS", "callsign": "UN", "region": "EAST 2", "zone": "ZONE C", "tsl": "CLEMENT"}, {"location": "FLOWSMART", "callsign": "FS", "region": "EAST 1", "zone": "ZONE B", "tsl": "EZEKIEL/UFOT"}, {"location": "MANTRC", "callsign": "MT", "region": "EAST 1", "zone": "ZONE B", "tsl": "EZEKIEL/UFOT"}, {"location": "FORTE UPSTREAM", "callsign": "FU", "region": "EAST 1", "zone": "ZONE B", "tsl": "EZEKIEL/UFOT"}, {"location": "ANA INDUSTRIES", "callsign": "AI", "region": "EAST 1", "zone": "ZONE B", "tsl": "EZEKIEL/UFOT"}, {"location": "PRIMEPORT", "callsign": "PP", "region": "EAST 1", "zone": "ZONE A", "tsl": "MOSES/NDANTI"}, {"location": "DORMALONG", "callsign": "DL", "region": "EAST 1", "zone": "ZONE B", "tsl": "EZEKIEL/UFOT"}];
+const cards = [];
+
+function buildForm(loc) {
+  const params = new URLSearchParams({
+    location: loc.location,
+    callsign: loc.callsign,
+    region: loc.region,
+    zone: loc.zone,
+    tsl: loc.tsl
+  });
+  return BASE_URL + '?' + params.toString();
+}
+
+function makeCard(loc, idx) {
+  const url = buildForm(loc);
+  const div = document.createElement('div');
+  div.className = 'card';
+  div.dataset.location = loc.location.toLowerCase();
+  div.dataset.callsign = loc.callsign.toLowerCase();
+  div.dataset.region = loc.region;
+  div.dataset.zone = loc.zone;
+
+  div.innerHTML = `
+    <span class="callsign">${loc.callsign}</span>
+    <div class="loc-name">${loc.location}</div>
+    <div class="meta">${loc.region} &bull; ${loc.zone} &bull; TSL: ${loc.tsl}</div>
+    <div class="qr-box" id="qr-${idx}"></div>
+    <div class="footer">Scan to submit daily sitrep</div>
+  `;
+
+  document.getElementById('grid').appendChild(div);
+
+  new QRCode(document.getElementById('qr-' + idx), {
+    text: url,
+    width: 180,
+    height: 180,
+    colorDark: "#0D1B4B",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  cards.push(div);
+}
+
+function filterCards() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const region = document.getElementById('regionFilter').value;
+  const zone = document.getElementById('zoneFilter').value;
+  let visible = 0;
+  cards.forEach(card => {
+    const matchQ = !q || card.dataset.location.includes(q) || card.dataset.callsign.includes(q);
+    const matchR = !region || card.dataset.region === region;
+    const matchZ = !zone || card.dataset.zone === zone;
+    const show = matchQ && matchR && matchZ;
+    card.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  document.getElementById('count-label').textContent = visible + ' locations shown';
+}
+
+locations.forEach((loc, idx) => makeCard(loc, idx));
+document.getElementById('count-label').textContent = locations.length + ' locations shown';
+</script>
+</body>
+</html>
