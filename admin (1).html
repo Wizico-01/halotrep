@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Halogen — Admin Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh}
+
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0D1B4B}
+.login-card{background:#fff;border-radius:16px;padding:40px 36px;width:340px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+.login-card .logo{color:#C8A84B;font-size:22px;font-weight:bold;letter-spacing:2px;margin-bottom:4px}
+.login-card .sub{color:#888;font-size:12px;margin-bottom:28px}
+.login-card input{width:100%;padding:13px 16px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;margin-bottom:14px}
+.login-card input:focus{outline:none;border-color:#C8A84B}
+.login-card button{width:100%;padding:14px;background:#0D1B4B;color:#C8A84B;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer}
+.login-card button:hover{background:#162255}
+.login-err{color:#dc3545;font-size:13px;margin-top:10px;display:none}
+
+#main-screen{display:none}
+.topbar{background:#0D1B4B;color:#C8A84B;padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+.topbar .brand{font-size:17px;font-weight:bold;letter-spacing:2px}
+.topbar .sub{font-size:11px;color:#aaa;margin-top:2px}
+.topbar .logout{background:none;border:1px solid #C8A84B;color:#C8A84B;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px}
+.topbar .logout:hover{background:#C8A84B;color:#0D1B4B}
+
+.tabs{display:flex;background:#fff;border-bottom:2px solid #e0e0e0;padding:0 24px;overflow-x:auto}
+.tab{padding:14px 18px;cursor:pointer;font-size:13px;font-weight:bold;color:#888;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tab.active{color:#0D1B4B;border-bottom-color:#C8A84B}
+
+.page{display:none;padding:20px}
+.page.active{display:block}
+
+.stats{display:flex;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+.stat-card{background:#fff;border-radius:10px;padding:14px 18px;flex:1;min-width:120px;border-left:4px solid #C8A84B;box-shadow:0 1px 6px rgba(0,0,0,0.07)}
+.stat-card .lbl{font-size:11px;color:#888;font-weight:bold;text-transform:uppercase;letter-spacing:1px}
+.stat-card .val{font-size:26px;font-weight:bold;color:#0D1B4B;margin-top:4px}
+
+.panel{background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,0.07);overflow:hidden;margin-bottom:20px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #eee;flex-wrap:wrap;gap:10px}
+.panel-head h3{font-size:14px;font-weight:bold;color:#0D1B4B}
+.search-box{padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:200px}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#0D1B4B;color:#C8A84B;padding:10px 12px;text-align:left;font-size:11px;letter-spacing:1px;white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+tr:hover td{background:#fafafa}
+
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:bold;letter-spacing:.5px}
+.badge.reported{background:#d4edda;color:#155724}
+.badge.sanction{background:#fff3cd;color:#856404}
+
+.btn{padding:7px 14px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold}
+.btn-gold{background:#C8A84B;color:#0D1B4B}
+.btn-gold:hover{background:#a88b3a}
+.btn-navy{background:#0D1B4B;color:#C8A84B}
+.btn-navy:hover{background:#162255}
+.btn-red{background:#dc3545;color:#fff}
+.btn-red:hover{background:#b02a37}
+.btn-green{background:#28a745;color:#fff}
+.btn-green:hover{background:#1e7e34}
+.btn-sm{padding:4px 9px;font-size:11px}
+
+.add-form{background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 6px rgba(0,0,0,0.07);margin-bottom:20px}
+.add-form h3{font-size:14px;font-weight:bold;color:#0D1B4B;margin-bottom:16px;border-bottom:2px solid #C8A84B;padding-bottom:8px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px}
+.f label{display:block;font-size:11px;font-weight:bold;color:#666;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+.f input,.f select{width:100%;padding:9px 11px;border:1.5px solid #ddd;border-radius:7px;font-size:13px}
+.f input:focus,.f select:focus{outline:none;border-color:#C8A84B}
+
+/* EDIT MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:14px;padding:28px;width:100%;max-width:520px;position:relative;max-height:90vh;overflow-y:auto}
+.modal h3{color:#0D1B4B;font-size:16px;font-weight:bold;margin-bottom:16px;border-bottom:2px solid #C8A84B;padding-bottom:8px}
+.modal-close{position:absolute;top:14px;right:18px;background:none;border:none;font-size:22px;cursor:pointer;color:#888}
+.modal-close:hover{color:#333}
+.modal .form-grid{grid-template-columns:1fr 1fr}
+.modal-actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+
+/* QR MODAL */
+.qr-modal{background:#fff;border-radius:14px;padding:28px;width:300px;text-align:center;position:relative}
+.qr-modal h3{color:#0D1B4B;font-size:15px;font-weight:bold;margin-bottom:4px}
+.qr-modal .meta{color:#888;font-size:11px;margin-bottom:14px}
+.qr-modal-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#888}
+.qr-box{width:200px;height:200px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center}
+
+.toast{position:fixed;bottom:24px;right:24px;background:#0D1B4B;color:#C8A84B;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:bold;display:none;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,0.2)}
+
+@media print{.topbar,.tabs,.stats,.panel-head,.btn,.add-form{display:none!important}.page{display:block!important;padding:0}table{font-size:11px}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="logo">&#9670; HALOGEN GROUP</div>
+    <div class="sub">Admin Control Panel</div>
+    <input type="text" id="login-user" placeholder="Username" autocomplete="username">
+    <input type="password" id="login-pass" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">LOGIN</button>
+    <div class="login-err" id="login-err">Invalid username or password</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main-screen">
+  <div class="topbar">
+    <div><div class="brand">&#9670; HALOGEN GROUP</div><div class="sub">Sitrep Admin Dashboard</div></div>
+    <button class="logout" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('locations',this)">&#128205; Locations</div>
+    <div class="tab"        onclick="showTab('qrcodes',this)">&#9700; QR Codes</div>
+    <div class="tab"        onclick="showTab('settings',this)">&#9881; Settings</div>
+  </div>
+
+  <!-- LOCATIONS -->
+  <div class="page active" id="tab-locations">
+    <div class="stats">
+      <div class="stat-card"><div class="lbl">Total Locations</div><div class="val" id="stat-total">0</div></div>
+      <div class="stat-card"><div class="lbl">East 1</div><div class="val" id="stat-e1">0</div></div>
+      <div class="stat-card"><div class="lbl">East 2</div><div class="val" id="stat-e2">0</div></div>
+      <div class="stat-card"><div class="lbl">Reported</div><div class="val" id="stat-rep">0</div></div>
+      <div class="stat-card"><div class="lbl">Sanction</div><div class="val" id="stat-san">0</div></div>
+    </div>
+
+    <div class="add-form">
+      <h3>&#43; Add New Location</h3>
+      <div class="form-grid">
+        <div class="f"><label>Location Name *</label><input type="text" id="new-loc" placeholder="e.g. ZENITH BANK LAGOS"></div>
+        <div class="f"><label>Call Sign *</label><input type="text" id="new-cs" placeholder="e.g. ZB"></div>
+        <div class="f"><label>Region *</label>
+          <select id="new-region"><option value="">Select region</option><option value="EAST 1">EAST 1</option><option value="EAST 2">EAST 2</option></select>
+        </div>
+        <div class="f"><label>Zone *</label>
+          <select id="new-zone"><option value="">Select zone</option><option value="ZONE A">ZONE A</option><option value="ZONE B">ZONE B</option><option value="ZONE C">ZONE C</option></select>
+        </div>
+        <div class="f"><label>TSL</label><input type="text" id="new-tsl" placeholder="e.g. ECHUA"></div>
+        <div class="f"><label>Status</label>
+          <select id="new-remark"><option value="SANCTION">SANCTION</option><option value="REPORTED">REPORTED</option></select>
+        </div>
+      </div>
+      <button class="btn btn-gold" onclick="addLocation()">&#43; Add Location</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>All Locations (<span id="loc-count">0</span>)</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input class="search-box" type="text" placeholder="Search..." oninput="filterLocs(this.value)">
+          <select class="search-box" style="width:130px" onchange="filterByStatus(this.value)">
+            <option value="">All Status</option>
+            <option value="REPORTED">Reported</option>
+            <option value="SANCTION">Sanction</option>
+          </select>
+          <button class="btn btn-navy btn-sm" onclick="resetAllToSanction()">&#8635; Reset Daily</button>
+          <button class="btn btn-navy btn-sm" onclick="window.print()">&#128438; Print</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>S/N</th><th>LOCATION</th><th>CALL SIGN</th>
+            <th>REGION</th><th>ZONE</th><th>TSL</th>
+            <th>STATUS</th><th>EDIT</th><th>QR</th><th>DEL</th>
+          </tr></thead>
+          <tbody id="loc-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR CODES -->
+  <div class="page" id="tab-qrcodes">
+    <div class="panel" style="margin-bottom:16px">
+      <div class="panel-head">
+        <h3>QR Code Directory</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input class="search-box" type="text" placeholder="Search..." id="qr-search" oninput="renderQRGrid()">
+          <button class="btn btn-gold" onclick="window.print()">&#128438; Print All</button>
+        </div>
+      </div>
+    </div>
+    <div id="qr-grid" style="display:flex;flex-wrap:wrap;gap:14px"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="tab-settings">
+    <div class="add-form" style="max-width:500px">
+      <h3>&#9881; System Settings</h3>
+      <div class="form-grid" style="grid-template-columns:1fr">
+        <div class="f"><label>Google Script URL</label><input type="text" id="set-gurl" placeholder="https://script.google.com/..."></div>
+        <div class="f"><label>Form Base URL</label><input type="text" id="set-furl" placeholder="https://wizico-01.github.io/halotrep/form.html"></div>
+        <div class="f"><label>New Username</label><input type="text" id="set-user" placeholder="Leave blank to keep current"></div>
+        <div class="f"><label>New Password</label><input type="password" id="set-pass" placeholder="Leave blank to keep current"></div>
+      </div>
+      <button class="btn btn-gold" onclick="saveSettings()">&#10003; Save Settings</button>
+      <p style="margin-top:10px;font-size:11px;color:#aaa">Settings saved in browser storage.</p>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-bg" id="edit-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeEdit()">&#10005;</button>
+    <h3>&#9998; Edit Location</h3>
+    <div class="form-grid">
+      <div class="f" style="grid-column:1/-1"><label>Location Name *</label><input type="text" id="edit-loc" placeholder="Location name"></div>
+      <div class="f"><label>Call Sign *</label><input type="text" id="edit-cs"></div>
+      <div class="f"><label>Region *</label>
+        <select id="edit-region"><option value="EAST 1">EAST 1</option><option value="EAST 2">EAST 2</option></select>
+      </div>
+      <div class="f"><label>Zone *</label>
+        <select id="edit-zone"><option value="ZONE A">ZONE A</option><option value="ZONE B">ZONE B</option><option value="ZONE C">ZONE C</option></select>
+      </div>
+      <div class="f"><label>TSL</label><input type="text" id="edit-tsl"></div>
+      <div class="f"><label>Status</label>
+        <select id="edit-remark"><option value="SANCTION">SANCTION</option><option value="REPORTED">REPORTED</option></select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-green" onclick="saveEdit()">&#10003; Save Changes</button>
+      <button class="btn btn-navy" onclick="closeEdit()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR MODAL -->
+<div class="modal-bg" id="qr-modal">
+  <div class="qr-modal">
+    <button class="qr-modal-close" onclick="closeQR()">&#10005;</button>
+    <h3 id="qm-name"></h3>
+    <div class="meta" id="qm-meta"></div>
+    <div class="qr-box" id="qm-qr"></div>
+    <button class="btn btn-navy" style="width:100%;padding:12px;font-size:13px" onclick="downloadQR()">&#11123; Download QR Code</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DEFAULT_USER = "halogen";
+const DEFAULT_PASS = "sitrep2024";
+
+let locations = [
+  {
+    "location": "CRUSH ROCK PH",
+    "callsign": "CP",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "REPORTED"
+  },
+  {
+    "location": "CRUSH ROCK EBOYI",
+    "callsign": "CE",
+    "region": "EAST 2",
+    "zone": "ZONE C",
+    "tsl": "CLEMENT",
+    "remark": "REPORTED"
+  },
+  {
+    "location": "DREDGING INTERNATIONAL",
+    "callsign": "DI",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "FCMB OYIGBO",
+    "callsign": "FO",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "FCMB TRANSAMADI",
+    "callsign": "FC2",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "POLARIS BANK TRANSAMADI",
+    "callsign": "PT",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "SHOURLINK MD RSD",
+    "callsign": "SM",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "BOURBON GUEST HOUSE",
+    "callsign": "BG",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "REPORTED"
+  },
+  {
+    "location": "ALLISON MADUEKE RESIDENCE YENAGOA",
+    "callsign": "AM2",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "REPORTED"
+  },
+  {
+    "location": "POLARIS BANK AGIP RD",
+    "callsign": "PA",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "MR MAXINE KORUBOR'S RSD",
+    "callsign": "MK",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "MEGA FLAT",
+    "callsign": "MF",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "GE ONNE",
+    "callsign": "GO",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "GREENVILLE LNG",
+    "callsign": "GV",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "INNOTEX TRANSAMADI",
+    "callsign": "IN",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "LILY HOSPITAL",
+    "callsign": "LH",
+    "region": "EAST 2",
+    "zone": "ZONE C",
+    "tsl": "CLEMENT",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "PROF MARSON'S RSD",
+    "callsign": "PM2",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "MBH POWER PLANT ENUGU",
+    "callsign": "MP",
+    "region": "EAST 2",
+    "zone": "ZONE C",
+    "tsl": "CLEMENT",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "MONTISOL HOTEL",
+    "callsign": "MH",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "MR AJILORE'S RSD",
+    "callsign": "AR",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "MTN OLD OFFICE",
+    "callsign": "MO2",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "MTN REGIONAL OFFICE",
+    "callsign": "MR",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "MTN VGC OLUOBASANJO RD",
+    "callsign": "MV",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "MTN VGC TRANSAMADI",
+    "callsign": "MV2",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "MTN WALK IN CENTER",
+    "callsign": "MW",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "PROTEA HOTEL WARRI",
+    "callsign": "PH",
+    "region": "EAST 2",
+    "zone": "ZONE C",
+    "tsl": "CLEMENT",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "PZ TANK FARM",
+    "callsign": "PZ",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "RADIANT",
+    "callsign": "RA",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "RELENTECH SPECIALIST",
+    "callsign": "RS",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "SEFLAM OIL",
+    "callsign": "SO",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "SIEMENS NIG",
+    "callsign": "SS",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "REPORTED"
+  },
+  {
+    "location": "STOCK GAP",
+    "callsign": "SG",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "TERRAWOOD ESTATE",
+    "callsign": "TW",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "TSL LOGISTICS",
+    "callsign": "TL",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "VIJITRONICS WARRI",
+    "callsign": "VT",
+    "region": "EAST 2",
+    "zone": "ZONE C",
+    "tsl": "CLEMENT",
+    "remark": "REPORTED"
+  },
+  {
+    "location": "BOURBON INTER OIL",
+    "callsign": "BB",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "REPORTED"
+  },
+  {
+    "location": "FMC TECHNOLOGIES",
+    "callsign": "FT",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "OIL DATA OFFICE",
+    "callsign": "OD",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "BRISTOW HELICOPTERS",
+    "callsign": "BH",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "CFAO MOTORS",
+    "callsign": "CM",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "DEPTHWIZE",
+    "callsign": "DW",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "DHL TRANS-AMADI",
+    "callsign": "DL1",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "EDO STATE HOUSE OF ASSEMBLY",
+    "callsign": "ES2",
+    "region": "EAST 2",
+    "zone": "ZONE C",
+    "tsl": "CLEMENT",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "FIRST MARINE",
+    "callsign": "FM",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "JETHMAN INTEGRATED",
+    "callsign": "JI",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "OAS HELICOPTERS",
+    "callsign": "OH",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "SCANTECH OFFSHORE",
+    "callsign": "SD1",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "STANBIC IBTC AWKA",
+    "callsign": "SA",
+    "region": "EAST 2",
+    "zone": "ZONE C",
+    "tsl": "CLEMENT",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "OSATO'S RESIDENCE UYO",
+    "callsign": "OR",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK TRANSAMADI",
+    "callsign": "UT",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK IKWERE RD",
+    "callsign": "UI",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK OYIBO",
+    "callsign": "UO",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK STATION RD",
+    "callsign": "US",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK OLD BUILDING",
+    "callsign": "UO3",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK KINGSWAY",
+    "callsign": "UK",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK BORI ONNE",
+    "callsign": "UB",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK UNICAL CALABAR",
+    "callsign": "UC2",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK CALABAR MAIN BRANCH",
+    "callsign": "UC",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "REPORTED"
+  },
+  {
+    "location": "UNION BANK MARAM RD CALABAR",
+    "callsign": "UC3",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK ORIJE",
+    "callsign": "UO2",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK UYO 2nd MAIN BRANCH",
+    "callsign": "UU",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK ABA RD",
+    "callsign": "UA",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK ODELE YENAGUA",
+    "callsign": "UY2",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK YENAGUA",
+    "callsign": "UY",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "ECHUA",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK CROSS RIVER",
+    "callsign": "UR",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK IKOT ABASI AKWAIBOM",
+    "callsign": "UU2",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK IKOT EDIBOM AKWA IBOM",
+    "callsign": "UU3",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK OGOJA",
+    "callsign": "UO4",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK EKET",
+    "callsign": "UE",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "UNION BANK UIT IBENO AKWAIBOM",
+    "callsign": "UI2",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "IHEANACHOR",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "OSHIMILI SOUTH OSS",
+    "callsign": "OO",
+    "region": "EAST 2",
+    "zone": "ZONE C",
+    "tsl": "CLEMENT",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "WARRI SOUTH OSS",
+    "callsign": "WO",
+    "region": "EAST 2",
+    "zone": "ZONE C",
+    "tsl": "CLEMENT",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "IKA SOUTH OSS",
+    "callsign": "IO",
+    "region": "EAST 2",
+    "zone": "ZONE C",
+    "tsl": "CLEMENT",
+    "remark": "REPORTED"
+  },
+  {
+    "location": "UGHELLI NORTH OSS",
+    "callsign": "UN",
+    "region": "EAST 2",
+    "zone": "ZONE C",
+    "tsl": "CLEMENT",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "FLOWSMART",
+    "callsign": "FS",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "EZEKIEL/UFOT",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "MANTRC",
+    "callsign": "MT",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "EZEKIEL/UFOT",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "FORTE UPSTREAM",
+    "callsign": "FU",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "EZEKIEL/UFOT",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "ANA INDUSTRIES",
+    "callsign": "AI",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "EZEKIEL/UFOT",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "PRIMEPORT",
+    "callsign": "PP",
+    "region": "EAST 1",
+    "zone": "ZONE A",
+    "tsl": "MOSES/NDANTI",
+    "remark": "SANCTION"
+  },
+  {
+    "location": "DORMALONG",
+    "callsign": "DL",
+    "region": "EAST 1",
+    "zone": "ZONE B",
+    "tsl": "EZEKIEL/UFOT",
+    "remark": "SANCTION"
+  }
+];
+let editIdx = null;
+let qrIdx   = null;
+
+// ---- SETTINGS ----
+function getS() {
+  return {
+    user: localStorage.getItem('hg_user') || DEFAULT_USER,
+    pass: localStorage.getItem('hg_pass') || DEFAULT_PASS,
+    gurl: localStorage.getItem('hg_gurl') || '',
+    furl: localStorage.getItem('hg_furl') || 'https://wizico-01.github.io/halotrep/form.html'
+  };
+}
+
+// ---- LOGIN ----
+function doLogin() {
+  const s = getS();
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value;
+  if (u === s.user && p === s.pass) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-screen').style.display  = 'block';
+    init();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+  }
+}
+function logout() {
+  document.getElementById('main-screen').style.display  = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-err').style.display = 'none';
+}
+
+// ---- TABS ----
+function showTab(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'qrcodes') renderQRGrid();
+}
+
+// ---- INIT ----
+function init() {
+  const saved = localStorage.getItem('hg_locations');
+  if (saved) locations = JSON.parse(saved);
+  renderTable();
+  updateStats();
+  loadSettingsUI();
+}
+
+function save() {
+  localStorage.setItem('hg_locations', JSON.stringify(locations));
+}
+
+// ---- STATS ----
+function updateStats() {
+  document.getElementById('stat-total').textContent = locations.length;
+  document.getElementById('stat-e1').textContent    = locations.filter(l => l.region === 'EAST 1').length;
+  document.getElementById('stat-e2').textContent    = locations.filter(l => l.region === 'EAST 2').length;
+  document.getElementById('stat-rep').textContent   = locations.filter(l => l.remark === 'REPORTED').length;
+  document.getElementById('stat-san').textContent   = locations.filter(l => l.remark === 'SANCTION').length;
+}
+
+// ---- TABLE ----
+let activeFilter = '';
+let activeStatus = '';
+
+function filterLocs(v)      { activeFilter = v.toLowerCase(); renderTable(); }
+function filterByStatus(v)  { activeStatus = v;               renderTable(); }
+
+function renderTable() {
+  const tbody = document.getElementById('loc-tbody');
+  tbody.innerHTML = '';
+  let list = locations.map((l, i) => ({...l, _idx: i}));
+  if (activeFilter) list = list.filter(l =>
+    l.location.toLowerCase().includes(activeFilter) ||
+    l.callsign.toLowerCase().includes(activeFilter) ||
+    l.tsl.toLowerCase().includes(activeFilter));
+  if (activeStatus) list = list.filter(l => l.remark === activeStatus);
+
+  document.getElementById('loc-count').textContent = list.length;
+
+  list.forEach((loc, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td><strong>${loc.location}</strong></td>
+      <td><code style="background:#f0f0f0;padding:2px 6px;border-radius:4px">${loc.callsign}</code></td>
+      <td>${loc.region}</td>
+      <td>${loc.zone}</td>
+      <td>${loc.tsl}</td>
+      <td><span class="badge ${loc.remark.toLowerCase()}">${loc.remark}</span></td>
+      <td><button class="btn btn-gold btn-sm" onclick="openEdit(${loc._idx})">&#9998; Edit</button></td>
+      <td><button class="btn btn-navy btn-sm" onclick="openQR(${loc._idx})">&#9700; QR</button></td>
+      <td><button class="btn btn-red btn-sm" onclick="removeLoc(${loc._idx})">&#10005;</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ---- ADD ----
+function addLocation() {
+  const loc    = document.getElementById('new-loc').value.trim().toUpperCase();
+  const cs     = document.getElementById('new-cs').value.trim().toUpperCase();
+  const region = document.getElementById('new-region').value;
+  const zone   = document.getElementById('new-zone').value;
+  const tsl    = document.getElementById('new-tsl').value.trim().toUpperCase();
+  const remark = document.getElementById('new-remark').value;
+  if (!loc || !cs || !region || !zone) { showToast('Fill in all required fields'); return; }
+  if (locations.find(l => l.callsign === cs)) { showToast('Call sign already exists!'); return; }
+  locations.push({ location: loc, callsign: cs, region, zone, tsl, remark });
+  save(); renderTable(); updateStats();
+  ['new-loc','new-cs','new-tsl'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('new-region').value = '';
+  document.getElementById('new-zone').value   = '';
+  showToast('✓ ' + loc + ' added!');
+}
+
+// ---- REMOVE ----
+function removeLoc(idx) {
+  if (!confirm('Remove ' + locations[idx].location + '?')) return;
+  locations.splice(idx, 1);
+  save(); renderTable(); updateStats();
+  showToast('Location removed');
+}
+
+// ---- RESET DAILY (sets all back to SANCTION at start of day) ----
+function resetAllToSanction() {
+  if (!confirm('Reset ALL locations to SANCTION?\n\nDo this at the start of each day before guards submit their sitrep.')) return;
+  locations.forEach(l => l.remark = 'SANCTION');
+  save(); renderTable(); updateStats();
+  showToast('✓ All locations reset to SANCTION');
+}
+
+// ---- EDIT ----
+function openEdit(idx) {
+  editIdx = idx;
+  const loc = locations[idx];
+  document.getElementById('edit-loc').value    = loc.location;
+  document.getElementById('edit-cs').value     = loc.callsign;
+  document.getElementById('edit-region').value = loc.region;
+  document.getElementById('edit-zone').value   = loc.zone;
+  document.getElementById('edit-tsl').value    = loc.tsl;
+  document.getElementById('edit-remark').value = loc.remark;
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function saveEdit() {
+  const loc    = document.getElementById('edit-loc').value.trim().toUpperCase();
+  const cs     = document.getElementById('edit-cs').value.trim().toUpperCase();
+  const region = document.getElementById('edit-region').value;
+  const zone   = document.getElementById('edit-zone').value;
+  const tsl    = document.getElementById('edit-tsl').value.trim().toUpperCase();
+  const remark = document.getElementById('edit-remark').value;
+  if (!loc || !cs) { showToast('Location name and call sign are required'); return; }
+  // Check duplicate call sign (excluding current)
+  const dup = locations.find((l, i) => l.callsign === cs && i !== editIdx);
+  if (dup) { showToast('Call sign already used by another location'); return; }
+  locations[editIdx] = { location: loc, callsign: cs, region, zone, tsl, remark };
+  save(); renderTable(); updateStats(); closeEdit();
+  showToast('✓ ' + loc + ' updated successfully');
+}
+
+function closeEdit() {
+  document.getElementById('edit-modal').classList.remove('open');
+  editIdx = null;
+}
+
+// ---- QR ----
+function buildURL(loc) {
+  const base = getS().furl;
+  const p = new URLSearchParams({location:loc.location,callsign:loc.callsign,region:loc.region,zone:loc.zone,tsl:loc.tsl});
+  return base + '?' + p.toString();
+}
+
+function openQR(idx) {
+  qrIdx = idx;
+  const loc = locations[idx];
+  document.getElementById('qm-name').textContent = loc.location;
+  document.getElementById('qm-meta').textContent = loc.region + ' • ' + loc.zone + ' • ' + loc.callsign;
+  document.getElementById('qm-qr').innerHTML = '';
+  new QRCode(document.getElementById('qm-qr'), {
+    text: buildURL(loc), width: 200, height: 200,
+    colorDark: '#0D1B4B', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+  document.getElementById('qr-modal').classList.add('open');
+}
+
+function closeQR() { document.getElementById('qr-modal').classList.remove('open'); qrIdx = null; }
+
+function downloadQR() {
+  const canvas = document.querySelector('#qm-qr canvas');
+  if (!canvas) return;
+  const loc  = locations[qrIdx];
+  const link = document.createElement('a');
+  link.download = 'QR_' + loc.callsign + '_' + loc.location.replace(/\s+/g,'_') + '.png';
+  link.href = canvas.toDataURL();
+  link.click();
+}
+
+function renderQRGrid() {
+  const grid   = document.getElementById('qr-grid');
+  const search = (document.getElementById('qr-search')?.value || '').toLowerCase();
+  grid.innerHTML = '';
+  const list = search
+    ? locations.filter(l => l.location.toLowerCase().includes(search) || l.callsign.toLowerCase().includes(search))
+    : locations;
+
+  list.forEach(loc => {
+    const realIdx = locations.indexOf(loc);
+    const card = document.createElement('div');
+    card.style.cssText = 'background:#fff;border-radius:10px;padding:14px 10px;width:210px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.1);border-top:4px solid #C8A84B';
+    card.innerHTML = `
+      <div style="background:#0D1B4B;color:#C8A84B;font-size:10px;font-weight:bold;padding:2px 8px;border-radius:20px;display:inline-block;margin-bottom:7px">${loc.callsign}</div>
+      <div style="font-size:11px;font-weight:bold;color:#0D1B4B;margin-bottom:2px;min-height:28px">${loc.location}</div>
+      <div style="font-size:10px;color:#999;margin-bottom:8px">${loc.region} • ${loc.zone}</div>
+      <div id="qrg-${realIdx}" style="width:160px;height:160px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center"></div>
+      <button class="btn btn-navy btn-sm" onclick="openQR(${realIdx})" style="width:100%">&#11123; Download</button>
+    `;
+    grid.appendChild(card);
+    new QRCode(document.getElementById('qrg-' + realIdx), {
+      text: buildURL(loc), width: 160, height: 160,
+      colorDark: '#0D1B4B', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  });
+}
+
+// ---- SETTINGS ----
+function loadSettingsUI() {
+  const s = getS();
+  document.getElementById('set-gurl').value = s.gurl;
+  document.getElementById('set-furl').value = s.furl;
+}
+
+function saveSettings() {
+  const g = document.getElementById('set-gurl').value.trim();
+  const f = document.getElementById('set-furl').value.trim();
+  const u = document.getElementById('set-user').value.trim();
+  const p = document.getElementById('set-pass').value.trim();
+  if (g) localStorage.setItem('hg_gurl', g);
+  if (f) localStorage.setItem('hg_furl', f);
+  if (u) localStorage.setItem('hg_user', u);
+  if (p) localStorage.setItem('hg_pass', p);
+  showToast('✓ Settings saved');
+}
+
+// ---- TOAST ----
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 3000);
+}
+</script>
+</body>
+</html>
